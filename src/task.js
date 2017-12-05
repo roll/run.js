@@ -1,4 +1,6 @@
-const lodahs = require('lodash')
+const lodash = require('lodash')
+const {Plan} = require('./plan')
+const {Command} = require('./command')
 
 
 // Module API
@@ -132,245 +134,290 @@ class Task {
     return !!this._childs.length
   }
 
-  get is_root() {
+  get isRoot() {
     return !this._parent
   }
 
-  // TODO: continue
+  get parents() {
+    const parents = []
+    let task = this
+    while (true) {
+      if (!task.parent) break
+      parents.push(task.parent)
+      task = task.parent
+    }
+    return parents.reverse()
+  }
 
-    get parents() {
-        parents = []
-        task = self
-        while true:
-            if not task.parent:
-                break
-            parents.append(task.parent)
-            task = task.parent
-        return list(reversed(parents))
+  get qualifiedName() {
+    const names = []
+    for (const parent of [...this.parents, self]) {
+      if (parent.name) names.push(parent.name)
+    }
+    return names.join(' ')
+  }
+
+  get flattenSetupTasks() {
+    const tasks = []
+    for (const parent of this.parents) {
+      for (const task of parent.childs) {
+        if (task === this) break
+        if (this.parents.includes(task)) break
+        if (task.type === 'variable') {
+          tasks.push(task)
+        }
+      }
+    }
+    return tasks
+  }
+
+  get flattenGeneralTasks() {
+      let tasks = []
+      for (const task of (this.composit ? this.childs : [self])) {
+        if (task.composite) {
+          tasks = [...tasks, ...task.flatten_general_tasks]
+          continue
+        }
+        tasks.push(task)
+      }
+      return tasks
+  }
+
+  get flattenChildsWithComposite() {
+    let tasks = []
+    for (const task of this.childs) {
+      tasks.push(task)
+      if (task.composite) {
+        tasks = [...tasks, ...task.flatten_childs_with_composite]
+      }
+    }
+    return tasks
+  }
+
+  findChildTasksByName(name) {
+    const tasks = []
+    for (const task of this.flattenGeneralTasks) {
+      if (task.name === name) {
+        tasks.push(task)
+      }
+    }
+    return tasks
+  }
+
+  findChildTaskByAbbrevation(abbrevation) {
+    const letter = abbrevation[0]
+    const abbrev = abbrevation[1:]
+    for (const task of this.childs) {
+      if (task.name.startsWith(letter) {
+        if (abbrev) {
+          return task.findChildTaskByAbbrevation(abbrev)
+        }
+        return task
+      }
+    }
+    return null
+  }
+
+  run(argv) {
+    const commands = []
+
+    // Delegate by name
+    if (argv.length > 0) {
+      for (const task of this.childs) {
+        if (task.name === argv[0]) {
+          return task.run(argv.slice(1))
+        }
+      }
     }
 
-    get qualified_name() {
-        names = []
-        for parent in (this.parents + [self]):
-            if parent.name:
-                names.append(parent.name)
-        return ' '.join(names)
+    // Delegate by abbrevation
+    if (argv.length > 0) {
+      if (this.isRoot) {
+        const task = this.findChildTaskByAbbrevation(argv[0])
+        if (task) {
+          return task.run(argv.slice(1))
+        }
+      }
     }
 
-    get flatten_setup_tasks() {
-        tasks = []
-        for parent in this.parents:
-            for task in parent.childs:
-                if task is self:
-                    break
-                if task in this.parents:
-                    break
-                if task.type == 'variable':
-                    tasks.append(task)
-        return tasks
+    // Root task
+    if (this.isRoot) {
+      if (argv.length > 0 && !lodash.isEqual(argv, ['?'])) {
+        message = `Task "${argv[0]}" not found`
+        helpers.printMessage('general', {message})
+        process.exit(1)
+      }
+      printHelp(self, self)
+      return true
     }
 
-    get flatten_general_tasks() {
-        tasks = []
-        for task in this.childs or [self]:
-            if task.composite:
-                tasks.extend(task.flatten_general_tasks)
-                continue
-            tasks.append(task)
-        return tasks
+    // Prepare filters
+    const filters = {pick: [], enable: [], disable: []}
+    for (const [name, prefix] of [['pick', '='], ['enable', '+'], ['disable', '-']]) {
+      for (const arg of [...argv]) {
+        if (arg.startsWith(prefix)) {
+          const childs = this.findChildTasksByName(arg.slice(1))
+          if (childs.length) {
+            filters[name] = [...filters[name], ...childs]
+            logash.pull(argv, arg)
+          }
+        }
+      }
     }
 
-    get flatten_childs_with_composite() {
-        tasks = []
-        for task in this.childs:
-            tasks.append(task)
-            if task.composite:
-                tasks.extend(task.flatten_childs_with_composite)
-        return tasks
+    // Detect help
+    let help = false
+    if (lodash.isEqual(argv, ['?'])) {
+      argv.pop()
+      help = true
     }
 
-    find_child_tasks_by_name(name) {
-        tasks = []
-        for task in this.flatten_general_tasks:
-            if task.name == name:
-                tasks.append(task)
-        return tasks
+    // Collect setup commands
+    for (const task of this.flattenSetupTasks) {
+      const command = new Command(task.qualifiedName, task.code, {variable: task.name})
+      commands.push(command)
     }
 
-    find_child_task_by_abbrevation(abbrevation) {
-        letter = abbrevation[0]
-        abbrev = abbrevation[1:]
-        for task in this.childs:
-            if task.name.startswith(letter):
-                if abbrev:
-                    return task.find_child_task_by_abbrevation(abbrev)
-                return task
-        return null
+    // Collect general commands
+    for (const task of this.flattenGeneralTasks) {
+      if (task !== self && !filters.pick.includes(task)) {
+        if (task.optional && !filters.enable.includes(task)) continue
+        if (filters.disable.includes(task)) continue
+        if (filters.pick) continue
+      }
+      const variable = task.type == 'variable' ? task.name : null
+      const command = new Command(task.qualifiedName, task.code, {variable})
+      commands.push(command)
     }
 
-    run(argv) {
-        commands = []
-
-        // Delegate by name
-        if len(argv) > 0:
-            for task in this.childs:
-                if task.name == argv[0]:
-                    return task.run(argv[1:])
-
-                      // Delegate by abbrevation
-        if len(argv) > 0:
-            if this.is_root:
-                task = this.find_child_task_by_abbrevation(argv[0])
-                if task:
-                    return task.run(argv[1:])
-
-                      // Root task
-        if this.is_root:
-            if len(argv) > 0 and argv not in [['?'], ['!']]:
-                message = 'Task "%s" not found' % argv[0]
-                helpers.print_message('general', message=message)
-                exit(1)
-            _print_help(self, self)
-            return true
-
-            // Prepare filters
-        filters = {'pick': [], 'enable': [], 'disable': []}
-        for name, prefix in [['pick', '='], ['enable', '+'], ['disable', '-']]:
-            for arg in list(argv):
-                if arg.startswith(prefix):
-                    childs = this.find_child_tasks_by_name(arg[1:])
-                    if childs:
-                        filters[name].extend(childs)
-                        argv.remove(arg)
-
-                        // Detect help
-        help = false
-        if argv == ['?']:
-            argv.pop()
-            help = true
-
-            // Collect setup commands
-        for task in this.flatten_setup_tasks:
-            command = Command(task.qualified_name, task.code, variable=task.name)
-            commands.append(command)
-
-            // Collect general commands
-        for task in this.flatten_general_tasks:
-            if task is not self and task not in filters['pick']:
-                if task.optional and task not in filters['enable']:
-                    continue
-                if task in filters['disable']:
-                    continue
-                if filters['pick']:
-                    continue
-            variable = task.name if task.type == 'variable' else null
-            command = Command(task.qualified_name, task.code, variable=variable)
-            commands.append(command)
-
-            // Normalize arguments
-        arguments_index = null
-        for index, command in enumerate(commands):
-            if '$RUNARGS' in command.code:
-                if not command.variable:
-                    arguments_index = index
-                    continue
-            if arguments_index is not null:
-                command.code = command.code.replace('$RUNARGS', '')
-
-            // Provide arguments
-        if arguments_index is null:
-            for index, command in enumerate(commands):
-                if not command.variable:
-                    command.code = '%s $RUNARGS' % command.code
-                    break
-
-                // Create plan
-        plan = Plan(commands, this.type)
-
-          // Show help
-        if help:
-            task = self if len(this.parents) < 2 else this.parents[1]
-            selected_task = self
-            _print_help(task, selected_task, plan, filters)
-            exit()
-
-            // Execute commands
-        plan.execute(argv,
-            quiet=this.quiet,
-            streamline=this.options.get('streamline'))
-
-        return true
+    // Normalize arguments
+    let argumentsIndex = null
+    for (const [index, command] of commands.entries()){
+      if (command.code.includes('$RUNARGS')){
+        if (!command.variable) {
+          argumentsIndex = index
+          continue
+        }
+      }
+      if (argumentsIndex !== null) {
+        command.code = command.code.replace('$RUNARGS', '')
+      }
     }
 
-    complete(argv) {
-
-      // Delegate by name
-        if len(argv) > 0:
-            for task in this.childs:
-                if task.name == argv[0]:
-                    task.complete(argv[1:])
-
-                      // Autocomplete
-        for child in this.childs:
-            if child.name:
-                print(child.name)
-
-        return true
+    // Provide arguments
+    if (argumentsIndex === null) {
+      for (const [index, command] of commands.entries()) {
+        if (!command.variable) {
+          command.code = `${command.code} $RUNARGS`
+          break
+        }
+      }
     }
+
+    // Create plan
+    const plan = new Plan(commands, this.type)
+
+    // Show help
+    if (help) {
+      const task = this.parents.length < 2 ? self : this.parents[1]
+      printHelp(task, this, plan, filters)
+      process.exit()
+    }
+
+    // Execute commands
+    plan.execute(argv, {
+      quiet: this.quiet,
+      faketty: this.options.faketty,
+    })
+
+    return true
+  }
+
+  complete(argv) {
+
+    // Delegate by name
+    if (argv.length > 0) {
+      for (const task of this.childs) {
+        if (task.name === argv[0]) {
+          return task.complete(argv.slice(1))
+        }
+      }
+    }
+
+    // Autocomplete
+    for (const child of this.childs) {
+      if (child.name) {
+        console.log(child.name)
+      }
+    }
+
+    return true
+  }
 
 }
 
 
 // Internal
 
-function _print_help(task, selected_task, plan=null, filters=null) {
+function printHelp(task, {selectedTask, plan, filters}) {
 
   // General
-    helpers.print_message('general', message=task.qualified_name)
-    helpers.print_message('general', message='\n---')
-    if task.desc:
-        helpers.print_message('general', message='\nDescription\n')
-        print(task.desc)
+  helpers.printMessage('general', {message: task.qualified_name})
+  helpers.printMessage('general', {message: '\n---'})
+  if (task.desc) {
+    helpers.printMessage('general', {message: '\nDescription\n'})
+    console.log(task.desc)
+  }
 
   // Vars
-    header = false
-    for child in [task] + task.flatten_childs_with_composite:
-        if child.type == 'variable':
-            if not header:
-                helpers.print_message('general', message='\nVars\n')
-                header = true
-            print(child.qualified_name)
+  let header = false
+  for (const child of [task, ...task.flattenChildsWithComposite]){
+    if (child.type === 'variable') {
+      if (!header) {
+        helpers.printMessage('general', {message: '\nVars\n'})
+        header = true
+      }
+      console.log(child.qualifiedName)
+    }
+  }
 
   // Tasks
-    header = false
-    for child in [task] + task.flatten_childs_with_composite:
-        if not child.name:
-            continue
-        if child.type == 'variable':
-            continue
-        if not header:
-            helpers.print_message('general', message='\nTasks\n')
-            header = true
-        message = child.qualified_name
-        if child.optional:
-            message += ' (optional)'
-        if filters:
-            if child in filters['pick']:
-                message += ' (picked)'
-            if child in filters['enable']:
-                message += ' (enabled)'
-            if child in filters['disable']:
-                message += ' (disabled)'
-        if child is selected_task:
-            message += ' (selected)'
-            helpers.print_message('general', message=message)
-        else:
-            print(message)
+  header = false
+  for (const child of [task, ...task.flattenChildsWithComposite]) {
+    if (!child.name) continue
+    if (child.type === 'variable') continue
+    if (!header {
+      helpers.printMessage('general', {message: '\nTasks\n'})
+      header = true
+    }
+    let message = child.qualifiedName
+    if (child.optional) {
+      message += ' (optional)'
+    }
+    if (filters) {
+      if (filters['pick'].includes(child)) {
+        message += ' (picked)'
+      }
+      if (filters['enable'].includes(child)) {
+        message += ' (enabled)'
+      }
+      if (filters['disable'].includes(child)) {
+        message += ' (disabled)'
+      }
+    }
+    if (child === selected_task) {
+      message += ' (selected)'
+      helpers.printMessage('general', {message})
+    } else {
+      console.log(message)
+    }
+  }
 
   // Execution plan
-    if plan:
-        helpers.print_message('general', message='\nExecution Plan\n')
-        print(plan.explain())
+  if (plan) {
+    helpers.printMessage('general', {message: '\nExecution Plan\n'})
+    console.log(plan.explain())
+  }
 
 }
 
