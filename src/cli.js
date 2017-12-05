@@ -15,15 +15,15 @@ async function main() {
   // Path argument
   let path = 'run.yml'
   if (argv.includes('--run-path')) {
-      path = argv[argv.indexOf('--run-path') + 1]
-      lodash.pull(argv, '--run-path', path)
+    path = argv[argv.indexOf('--run-path') + 1]
+    lodash.pull(argv, '--run-path', path)
   }
 
   // Complete argument
   let complete = false
   if (argv.includes('--run-complete')) {
-      lodash.pull(argv, '--run-complete')
-      complete = True
+    lodash.pull(argv, '--run-complete')
+    complete = True
   }
 
   // Prepare
@@ -32,8 +32,8 @@ async function main() {
 
   // Complete
   if (complete) {
-      task.complete(argv)
-      process.exit()
+    task.complete(argv)
+    process.exit()
   }
 
   // Run
