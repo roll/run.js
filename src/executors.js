@@ -27,7 +27,7 @@ def execute_sync(commands, environ, quiet=False):
             environ[command.variable] = output.decode().strip()
 
 
-def execute_async(commands, environ, multiplex=False, quiet=False, streamline=False):
+def execute_async(commands, environ, multiplex=False, quiet=False, faketty=False):
 
     # Launch processes
     processes = []
@@ -41,7 +41,7 @@ def execute_async(commands, environ, multiplex=False, quiet=False, streamline=Fa
 
         # Create process
         process = subprocess.Popen(
-            _apply_faketty(command.code, streamline=streamline), bufsize=64, env=environ,
+            _apply_faketty(command.code, faketty=faketty), bufsize=64, env=environ,
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         # Create listener
