@@ -1,93 +1,100 @@
+const chalk = require('chalk')
+const {StreamSplitter} = requre('stream-splitter')
+const {spawn, spawnSync} = require('child_process')
 const {applyFaketty} = require('./faketty')
+const helpers = require('./helpers')
 
 
 // Module API
 
-def execute_sync(commands, environ, quiet=False):
-    for command in commands:
+function executeSync(commands, environ, {quiet}) {
+  for (const command of commands) {
 
-        # Log process
-        if not command.variable and not quiet:
-            sys.stdout.write('[run] Launched "%s"\n' % command.code)
-            sys.stdout.flush()
+    // Log process
+    if (!command.variable && !quiet) {
+      console.log(`[run] Launched "${command.code}"\n`)
+    }
 
-        # Create process
-        stdout = None if not command.variable else subprocess.PIPE
-        stderr = None if not command.variable else subprocess.STDOUT
-        process = subprocess.Popen(command.code,
-            shell=True, env=environ, stdout=stdout, stderr=stderr)
+    // Execute process
+    const stdio = command.variable ? 'pipe' : 'inherit'
+    const result = spawnSync(command.code, {shell: true, env: environ, stdio})
 
-        # Wait process
-        output, _ = process.communicate()
-        if process.returncode != 0:
-            message = '[run] Command "%s" has failed' % command.code
-            helpers.print_message('general', message=message)
-            exit(1)
-        if command.variable:
-            environ[command.variable] = output.decode().strip()
+    // Failed process
+    if (result.status !== 0) {
+        const message = `[run] Command "${command.code}" has failed`
+        helpers.print_message('general', {message})
+        process.exit(1)
+    }
+
+    // Update environ
+    if (command.variable) {
+      environ[command.variable] = result.stdout
+    }
+
+  }
+}
 
 
-def execute_async(commands, environ, multiplex=False, quiet=False, faketty=False):
+async function executeAsunc(commands, environ, {multiplex, quiet, faketty}) {
+  return new Promise((resolve, reject) => {
+    let closed = 0
+    const childs = []
+    const colorIterator = helpers.iterColor()
+    for (const command of commands) {
 
-    # Launch processes
-    processes = []
-    color_iterator = helpers.iter_colors()
-    for command in commands:
+      // Log process
+      if (!quiet) {
+        console.log(`[run] Launched "${command.code}"\n`)
+      }
 
-        # Log process
-        if not quiet:
-            sys.stdout.write('[run] Launched "%s"\n' % command.code)
-            sys.stdout.flush()
+      // Data handler
+      const createOnLine = (command, child, color) => (line) {
+        printLine(line, command.name, {multiplex, quiet})
+      }
 
-        # Create process
-        process = subprocess.Popen(
-            _apply_faketty(command.code, faketty=faketty), bufsize=64, env=environ,
-            shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      // Close handler
+      const createOnClose = (command, child, color) => (code) {
 
-        # Create listener
-        listener = select.poll()
-        listener.register(process.stdout, select.POLLIN)
+        // Failed process
+        if (code !== 0) {
+            const message = `[run] Command "${command.code}" has failed`
+            helpers.print_message('general', {message})
+            process.exit(1)
+        }
 
-        # Register process
-        color = next(color_iterator)
-        processes.append((command, process, listener, color))
+        // All finished
+        closed += 1
+        if (commands.length === closed) {
+          resolve()
+        }
 
-    # Wait processes
-    while processes:
-        for index, (command, process, listener, color) in enumerate(processes):
+      }
 
-            # Process output
-            if multiplex or index == 0:
-                while listener.poll(1000):
-                    line = process.stdout.readline()
-                    if not line:
-                        break
-                    _print_line(line, command.name, color,
-                        multiplex=multiplex, quiet=quiet)
+      // Create process
+      const stdio = 'pipe'
+      const color = colorIterator.next().value
+      const splitter = new StreamSplitter('\n')
+      const child = spawn(command.code, {shell: true, env: environ, stdio})
+      splitter.on('token', createOnLine(command, color, child));
+      child.on('close', createOnClose(command, color, child));
+      child.stdout.pipe(splitter)
+      child.stderr.pipe(splitter)
 
-            # Process finish
-            if process.poll() is not None:
-                if process.returncode != 0:
-                    for line in process.stdout.readlines():
-                        _print_line(line, command.name, color,
-                            multiplex=multiplex, quiet=quiet)
-                    message = '[run] Command "%s" has failed' % command.code
-                    helpers.print_message('general', message=message)
-                    exit(1)
-                if index == 0:
-                    processes.pop(index)
-                    break
+    }
+  })
+}
 
 
 // Internal
 
-def _print_line(line, name, color, multiplex=False, quiet=False):
-    line = line.replace(b'\r\n', b'\n')
-    if multiplex and not quiet:
-        click.echo(click.style('%s | ' % name, fg=color), nl=False)
-    buffer = getattr(sys.stdout, 'buffer', sys.stdout)
-    buffer.write(line)
-    sys.stdout.flush()
+function printLine(line, name, color, {multiplex, quiet}) {
+  line = line.replace('\r\n', '\n')
+  if (multiplex && !quiet) {
+    process.stdout.write(chalk[color](`${name} | `))
+  }
+  process.stdout.write(line)
+  process.stdout.flush()
+}
 
 
 // System
