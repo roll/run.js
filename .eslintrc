@@ -87,6 +87,10 @@ rules:
     - off
   new-cap:
     - off
+  no-mixed-operators:
+    - off
+  no-constant-condition:
+    - off
   guard-for-in:
     - off
   import/no-dynamic-require:

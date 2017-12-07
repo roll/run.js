@@ -244,7 +244,7 @@ class Task {
     // Root task
     if (this.isRoot) {
       if (argv.length > 0 && !lodash.isEqual(argv, ['?'])) {
-        message = `Task "${argv[0]}" not found`
+        const message = `Task "${argv[0]}" not found`
         helpers.printMessage('general', {message})
         process.exit(1)
       }
@@ -286,15 +286,15 @@ class Task {
         if (filters.disable.includes(task)) continue
         if (filters.pick.length) continue
       }
-      const variable = task.type == 'variable' ? task.name : null
+      const variable = task.type === 'variable' ? task.name : null
       const command = new Command(task.qualifiedName, task.code, {variable})
       commands.push(command)
     }
 
     // Normalize arguments
     let argumentsIndex = null
-    for (const [index, command] of commands.entries()){
-      if (command.code.includes('$RUNARGS')){
+    for (const [index, command] of commands.entries()) {
+      if (command.code.includes('$RUNARGS')) {
         if (!command.variable) {
           argumentsIndex = index
           continue
@@ -307,7 +307,7 @@ class Task {
 
     // Provide arguments
     if (argumentsIndex === null) {
-      for (const [index, command] of commands.entries()) {
+      for (const command of commands) {
         if (!command.variable) {
           command.code = `${command.code} $RUNARGS`
           break
@@ -372,7 +372,7 @@ function printHelp(task, {selectedTask, plan, filters}) {
 
   // Vars
   let header = false
-  for (const child of [task, ...task.flattenChildsWithComposite]){
+  for (const child of [task, ...task.flattenChildsWithComposite]) {
     if (child.type === 'variable') {
       if (!header) {
         helpers.printMessage('general', {message: '\nVars\n'})
@@ -396,13 +396,13 @@ function printHelp(task, {selectedTask, plan, filters}) {
       message += ' (optional)'
     }
     if (filters) {
-      if (filters['pick'].includes(child)) {
+      if (filters.pick.includes(child)) {
         message += ' (picked)'
       }
-      if (filters['enable'].includes(child)) {
+      if (filters.enable.includes(child)) {
         message += ' (enabled)'
       }
-      if (filters['disable'].includes(child)) {
+      if (filters.disable.includes(child)) {
         message += ' (disabled)'
       }
     }

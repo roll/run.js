@@ -23,7 +23,7 @@ function readConfig(path='run.yml') {
   let comments = []
   const config = {run: []}
   const rawConfig = documents[0]
-  for (line of contents.split('\n')) {
+  for (const line of contents.split('\n')) {
 
     // Comment begin
     if (line.startsWith('# ')) {
@@ -47,7 +47,7 @@ function readConfig(path='run.yml') {
   // Get options
   let options = {}
   if (documents.length > 1) {
-      options = documents[1] || {}
+    options = documents[1] || {}
   }
 
   return {config, options}
@@ -72,18 +72,18 @@ function* iterColors() {
 // Internal
 
 const COLORS = [
-    'cyan',
-    'yellow',
-    'green',
-    'magenta',
-    'red',
-    'blue',
-    'intense_cyan',
-    'intense_yellow',
-    'intense_green',
-    'intense_magenta',
-    'intense_red',
-    'intense_blue',
+  'cyan',
+  'yellow',
+  'green',
+  'magenta',
+  'red',
+  'blue',
+  'intense_cyan',
+  'intense_yellow',
+  'intense_green',
+  'intense_magenta',
+  'intense_red',
+  'intense_blue',
 ]
 
 

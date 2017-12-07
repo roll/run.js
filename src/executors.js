@@ -21,9 +21,9 @@ function executeSync(commands, {environ, quiet}={}) {
 
     // Failed process
     if (result.status !== 0) {
-        const message = `[run] Command "${command.code}" has failed`
-        helpers.printMessage('general', {message})
-        process.exit(1)
+      const message = `[run] Command "${command.code}" has failed`
+      helpers.printMessage('general', {message})
+      process.exit(1)
     }
 
     // Update environ
@@ -36,9 +36,35 @@ function executeSync(commands, {environ, quiet}={}) {
 
 
 async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
-  return new Promise((resolve, reject) => {
-    let closed = 0
-    const childs = []
+  return new Promise((resolve) => {
+
+    // Data handler
+    const createOnLine = (command, color) => (line) => {
+      // TODO: in parallel mode buffer secondary commands output
+      line = `${line.toString()}\n`
+      printLine(line, command.name, color, {multiplex, quiet})
+    }
+
+    // Close handler
+    const createOnClose = (command) => (code) => {
+
+      // Failed process
+      if (code !== 0) {
+        const message = `[run] Command "${command.code}" has failed`
+        helpers.printMessage('general', {message})
+        process.exit(1)
+      }
+
+      // All finished
+      finishedCount += 1
+      if (commands.length === finishedCount) {
+        resolve()
+      }
+
+    }
+
+    // Execute commands
+    let finishedCount = 0
     const colorIterator = helpers.iterColors()
     for (const command of commands) {
 
@@ -47,39 +73,14 @@ async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
         console.log(`[run] Launched "${command.code}"`)
       }
 
-      // Data handler
-      const createOnLine = (command, color, subprocess) => (line) => {
-        // TODO: in parallel mode buffer secondary commands output
-        line = `${line.toString()}\n`
-        printLine(line, command.name, color, {multiplex, quiet})
-      }
-
-      // Close handler
-      const createOnClose = (command, color, subprocess) => (code) => {
-
-        // Failed process
-        if (code !== 0) {
-            const message = `[run] Command "${command.code}" has failed`
-            helpers.printMessage('general', {message})
-            process.exit(1)
-        }
-
-        // All finished
-        closed += 1
-        if (commands.length === closed) {
-          resolve()
-        }
-
-      }
-
       // Create process
       const stdio = 'pipe'
       const color = colorIterator.next().value
       const splitter = new StreamSplitter('\n')
       const code = applyFaketty(command.code, {faketty})
       const subprocess = spawn(code, {shell: true, env: environ, stdio})
-      splitter.on('token', createOnLine(command, color, subprocess));
-      subprocess.on('close', createOnClose(command, color, subprocess));
+      splitter.on('token', createOnLine(command, color, subprocess))
+      subprocess.on('close', createOnClose(command, color, subprocess))
       subprocess.stdout.pipe(splitter)
       subprocess.stderr.pipe(splitter)
 
