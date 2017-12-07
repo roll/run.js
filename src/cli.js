@@ -21,7 +21,7 @@ async function main() {
   let complete = false
   if (argv.includes('--run-complete')) {
     lodash.pull(argv, '--run-complete')
-    complete = True
+    complete = true
   }
 
   // Prepare

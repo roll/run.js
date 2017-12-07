@@ -49,6 +49,7 @@ async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
 
       // Data handler
       const createOnLine = (command, color, subprocess) => (line) => {
+        // TODO: in parallel mode buffer secondary commands output
         line = `${line.toString()}\n`
         printLine(line, command.name, color, {multiplex, quiet})
       }
@@ -59,7 +60,7 @@ async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
         // Failed process
         if (code !== 0) {
             const message = `[run] Command "${command.code}" has failed`
-            helpers.print_message('general', {message})
+            helpers.printMessage('general', {message})
             process.exit(1)
         }
 
@@ -75,7 +76,8 @@ async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
       const stdio = 'pipe'
       const color = colorIterator.next().value
       const splitter = new StreamSplitter('\n')
-      const subprocess = spawn(command.code, {shell: true, env: environ, stdio})
+      const code = applyFaketty(command.code, {faketty})
+      const subprocess = spawn(code, {shell: true, env: environ, stdio})
       splitter.on('token', createOnLine(command, color, subprocess));
       subprocess.on('close', createOnClose(command, color, subprocess));
       subprocess.stdout.pipe(splitter)

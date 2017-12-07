@@ -54,6 +54,7 @@ class Plan {
     }
 
     // Update environ
+    process.env.PATH = `node_modules/.bin:${process.env.PATH}`
     process.env.RUNARGS = argv.join(' ')
     const runvars = process.env.RUNVARS
     if (runvars) {
