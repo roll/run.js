@@ -260,7 +260,7 @@ class Task {
           const childs = this.findChildTasksByName(arg.slice(1))
           if (childs.length) {
             filters[name] = [...filters[name], ...childs]
-            logash.pull(argv, arg)
+            lodash.pull(argv, arg)
           }
         }
       }
