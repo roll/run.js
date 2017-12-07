@@ -34,7 +34,7 @@ class Plan {
 
   }
 
-  execute(argv, {quiet, faketty}) {
+  async execute(argv, {quiet, faketty}) {
     const commands = [...this._commands]
 
     // Variables
@@ -81,11 +81,11 @@ class Plan {
 
     // Parallel
     } else if (this._mode === 'parallel') {
-      executors.executeAsync(commands, {environ: process.env, quiet, faketty})
+      await executors.executeAsync(commands, {environ: process.env, quiet, faketty})
 
     // Multiplex
     } else if (this._mode === 'multiplex') {
-      executors.executeAsync(commands, {
+      await executors.executeAsync(commands, {
         environ: process.env, multiplex: true, quiet, faketty
       })
     }

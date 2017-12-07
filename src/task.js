@@ -219,7 +219,7 @@ class Task {
     return null
   }
 
-  run(argv) {
+  async run(argv) {
     const commands = []
 
     // Delegate by name
@@ -326,7 +326,7 @@ class Task {
     }
 
     // Execute commands
-    plan.execute(argv, {
+    await plan.execute(argv, {
       quiet: this.quiet,
       faketty: this.options.faketty,
     })

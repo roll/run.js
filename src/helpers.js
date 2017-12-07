@@ -92,4 +92,5 @@ const COLORS = [
 module.exports = {
   readConfig,
   printMessage,
+  iterColors,
 }

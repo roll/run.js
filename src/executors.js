@@ -1,5 +1,5 @@
 const chalk = require('chalk')
-const {StreamSplitter} = require('stream-splitter')
+const StreamSplitter = require('stream-splitter')
 const {spawn, spawnSync} = require('child_process')
 const {applyFaketty} = require('./faketty')
 const helpers = require('./helpers')
@@ -39,17 +39,18 @@ async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
   return new Promise((resolve, reject) => {
     let closed = 0
     const childs = []
-    const colorIterator = helpers.iterColor()
+    const colorIterator = helpers.iterColors()
     for (const command of commands) {
 
       // Log process
       if (!quiet) {
-        console.log(`[run] Launched "${command.code}"\n`)
+        console.log(`[run] Launched "${command.code}"`)
       }
 
       // Data handler
       const createOnLine = (command, color, subprocess) => (line) => {
-        printLine(line, command.name, {multiplex, quiet})
+        line = `${line.toString()}\n`
+        printLine(line, command.name, color, {multiplex, quiet})
       }
 
       // Close handler
@@ -87,13 +88,12 @@ async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
 
 // Internal
 
-function printLine(line, name, color, {multiplex, quiet}) {
+function printLine(line, name, color, {multiplex, quiet}={}) {
   line = line.replace('\r\n', '\n')
   if (multiplex && !quiet) {
     process.stdout.write(chalk[color](`${name} | `))
   }
   process.stdout.write(line)
-  process.stdout.flush()
 }
 
 

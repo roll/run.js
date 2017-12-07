@@ -35,7 +35,7 @@ async function main() {
   }
 
   // Run
-  task.run(argv)
+  await task.run(argv)
 
 }
 
