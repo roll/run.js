@@ -173,15 +173,15 @@ class Task {
   }
 
   get flattenGeneralTasks() {
-      let tasks = []
-      for (const task of (this.composit ? this.childs : [this])) {
-        if (task.composite) {
-          tasks = [...tasks, ...task.flatten_general_tasks]
-          continue
-        }
-        tasks.push(task)
+    const tasks = []
+    for (const task of (this.composite ? this.childs : [this])) {
+      if (task.composite) {
+        tasks = [...tasks, ...task.flattenGeneralTasks]
+        continue
       }
-      return tasks
+      tasks.push(task)
+    }
+    return tasks
   }
 
   get flattenChildsWithComposite() {
@@ -284,7 +284,7 @@ class Task {
       if (task !== this && !filters.pick.includes(task)) {
         if (task.optional && !filters.enable.includes(task)) continue
         if (filters.disable.includes(task)) continue
-        if (filters.pick) continue
+        if (filters.pick.length) continue
       }
       const variable = task.type == 'variable' ? task.name : null
       const command = new Command(task.qualifiedName, task.code, {variable})

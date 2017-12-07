@@ -93,7 +93,7 @@ class Plan {
     // Log finished
     const stop = process.hrtime(start)
     if (!quiet) {
-      const time = stop[0] + stop[1]/1000000000
+      const time = (stop[0] + stop[1]/1000000000).toFixed(3)
       console.log(`[run] Finished in ${time} seconds`)
     }
 
