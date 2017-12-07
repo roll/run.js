@@ -27,7 +27,7 @@ class Plan {
       }
       let code = command.code
       if (command.variable) code = '%s="%s"' % (command.variable, command.code)
-      lines.push(`${' '.repeat(plain ? 0 : 4)}$ ${code}`
+      lines.push(`${' '.repeat(plain ? 0 : 4)}$ ${code}`)
     }
 
     return lines.join('\n')
@@ -66,14 +66,14 @@ class Plan {
     if (!quiet) {
       const items = []
       for (const name of [...varnames, 'RUNARGS']) {
-        items.push(`${name}=${process.env[name]}`
+        items.push(`${name}=${process.env[name]}`)
       }
-      console.log(`[run] Prepared "${items.join('; ')}"`
+      console.log(`[run] Prepared "${items.join('; ')}"`)
     }
 
     // Directive
     if (this._mode === 'directive') {
-      executors.executeSync(commands, (environ: process.env, quiet})
+      executors.executeSync(commands, {environ: process.env, quiet})
 
     // Sequence
     } else if (this._mode === 'sequence') {
@@ -94,7 +94,7 @@ class Plan {
     const stop = process.hrtime(start)
     if (!quiet) {
       time = stop[0] + stop[1]/1000000000
-      console.log(`[run] Finished in ${time} seconds`
+      console.log(`[run] Finished in ${time} seconds`)
     }
 
   }

@@ -1,5 +1,5 @@
 const chalk = require('chalk')
-const {StreamSplitter} = requre('stream-splitter')
+const {StreamSplitter} = require('stream-splitter')
 const {spawn, spawnSync} = require('child_process')
 const {applyFaketty} = require('./faketty')
 const helpers = require('./helpers')
@@ -35,7 +35,7 @@ function executeSync(commands, environ, {quiet}) {
 }
 
 
-async function executeAsunc(commands, environ, {multiplex, quiet, faketty}) {
+async function executeAsync(commands, environ, {multiplex, quiet, faketty}) {
   return new Promise((resolve, reject) => {
     let closed = 0
     const childs = []
@@ -48,12 +48,12 @@ async function executeAsunc(commands, environ, {multiplex, quiet, faketty}) {
       }
 
       // Data handler
-      const createOnLine = (command, child, color) => (line) {
+      const createOnLine = (command, color, subprocess) => (line) => {
         printLine(line, command.name, {multiplex, quiet})
       }
 
       // Close handler
-      const createOnClose = (command, child, color) => (code) {
+      const createOnClose = (command, color, subprocess) => (code) => {
 
         // Failed process
         if (code !== 0) {
@@ -74,11 +74,11 @@ async function executeAsunc(commands, environ, {multiplex, quiet, faketty}) {
       const stdio = 'pipe'
       const color = colorIterator.next().value
       const splitter = new StreamSplitter('\n')
-      const child = spawn(command.code, {shell: true, env: environ, stdio})
-      splitter.on('token', createOnLine(command, color, child));
-      child.on('close', createOnClose(command, color, child));
-      child.stdout.pipe(splitter)
-      child.stderr.pipe(splitter)
+      const subprocess = spawn(command.code, {shell: true, env: environ, stdio})
+      splitter.on('token', createOnLine(command, color, subprocess));
+      subprocess.on('close', createOnClose(command, color, subprocess));
+      subprocess.stdout.pipe(splitter)
+      subprocess.stderr.pipe(splitter)
 
     }
   })

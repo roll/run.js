@@ -1,6 +1,7 @@
 const lodash = require('lodash')
 const {Plan} = require('./plan')
 const {Command} = require('./command')
+const helpers = require('./helpers')
 
 
 // Module API
@@ -9,13 +10,13 @@ class Task {
 
   // Public
 
-  constructor(descriptor, {options, parent, parentType, quiet}={}):
+  constructor(descriptor, {options, parent, parentType, quiet}={}) {
     this._parent = parent
 
     // Prepare
     let desc = parent ? '' : 'General run description'
     let [name, code] = Object.entries(descriptor)[0]
-    if lodash.isPlainObject(code) {
+    if (lodash.isPlainObject(code)) {
       desc = code.desc
       code = code.code
     }
@@ -73,7 +74,7 @@ class Task {
       for (let descriptor of code) {
         if (!lodash.isPlainObject(descriptor)) descriptor = {'': descriptor}
         childs.push(new Task(descriptor, {
-          options, parent: self, parentType: type, quiet
+          options, parent: this, parentType: type, quiet
         }))
       }
 
@@ -151,7 +152,7 @@ class Task {
 
   get qualifiedName() {
     const names = []
-    for (const parent of [...this.parents, self]) {
+    for (const parent of [...this.parents, this]) {
       if (parent.name) names.push(parent.name)
     }
     return names.join(' ')
@@ -173,7 +174,7 @@ class Task {
 
   get flattenGeneralTasks() {
       let tasks = []
-      for (const task of (this.composit ? this.childs : [self])) {
+      for (const task of (this.composit ? this.childs : [this])) {
         if (task.composite) {
           tasks = [...tasks, ...task.flatten_general_tasks]
           continue
@@ -188,7 +189,7 @@ class Task {
     for (const task of this.childs) {
       tasks.push(task)
       if (task.composite) {
-        tasks = [...tasks, ...task.flatten_childs_with_composite]
+        tasks = [...tasks, ...task.flattenChildsWithComposite]
       }
     }
     return tasks
@@ -206,9 +207,9 @@ class Task {
 
   findChildTaskByAbbrevation(abbrevation) {
     const letter = abbrevation[0]
-    const abbrev = abbrevation[1:]
+    const abbrev = abbrevation.slice(1)
     for (const task of this.childs) {
-      if (task.name.startsWith(letter) {
+      if (task.name.startsWith(letter)) {
         if (abbrev) {
           return task.findChildTaskByAbbrevation(abbrev)
         }
@@ -247,7 +248,7 @@ class Task {
         helpers.printMessage('general', {message})
         process.exit(1)
       }
-      printHelp(self, self)
+      printHelp(this, {selectedTask: this})
       return true
     }
 
@@ -280,7 +281,7 @@ class Task {
 
     // Collect general commands
     for (const task of this.flattenGeneralTasks) {
-      if (task !== self && !filters.pick.includes(task)) {
+      if (task !== this && !filters.pick.includes(task)) {
         if (task.optional && !filters.enable.includes(task)) continue
         if (filters.disable.includes(task)) continue
         if (filters.pick) continue
@@ -319,8 +320,8 @@ class Task {
 
     // Show help
     if (help) {
-      const task = this.parents.length < 2 ? self : this.parents[1]
-      printHelp(task, this, plan, filters)
+      const task = this.parents.length < 2 ? this : this.parents[1]
+      printHelp(task, {selectedTask: this, plan, filters})
       process.exit()
     }
 
@@ -362,7 +363,7 @@ class Task {
 function printHelp(task, {selectedTask, plan, filters}) {
 
   // General
-  helpers.printMessage('general', {message: task.qualified_name})
+  helpers.printMessage('general', {message: task.qualifiedName})
   helpers.printMessage('general', {message: '\n---'})
   if (task.desc) {
     helpers.printMessage('general', {message: '\nDescription\n'})
@@ -386,7 +387,7 @@ function printHelp(task, {selectedTask, plan, filters}) {
   for (const child of [task, ...task.flattenChildsWithComposite]) {
     if (!child.name) continue
     if (child.type === 'variable') continue
-    if (!header {
+    if (!header) {
       helpers.printMessage('general', {message: '\nTasks\n'})
       header = true
     }
@@ -405,7 +406,7 @@ function printHelp(task, {selectedTask, plan, filters}) {
         message += ' (disabled)'
       }
     }
-    if (child === selected_task) {
+    if (child === selectedTask) {
       message += ' (selected)'
       helpers.printMessage('general', {message})
     } else {

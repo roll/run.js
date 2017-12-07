@@ -8,7 +8,7 @@ const helpers = require('./helpers')
 async function main() {
 
   // Arguments
-  const argv = process.argv.slice(argv[0].endsWith('node') ? 2 : 1)
+  const argv = process.argv.slice(process.argv[0].endsWith('node') ? 2 : 1)
 
   // Path argument
   let path = 'run.yml'
