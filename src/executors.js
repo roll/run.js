@@ -7,7 +7,7 @@ const helpers = require('./helpers')
 
 // Module API
 
-function executeSync(commands, environ, {quiet}={}) {
+function executeSync(commands, {environ, quiet}={}) {
   for (const command of commands) {
 
     // Log process
@@ -28,14 +28,14 @@ function executeSync(commands, environ, {quiet}={}) {
 
     // Update environ
     if (command.variable) {
-      environ[command.variable] = result.stdout
+      environ[command.variable] = result.stdout.toString().trim()
     }
 
   }
 }
 
 
-async function executeAsync(commands, environ, {multiplex, quiet, faketty}={}) {
+async function executeAsync(commands, {environ, multiplex, quiet, faketty}={}) {
   return new Promise((resolve, reject) => {
     let closed = 0
     const childs = []

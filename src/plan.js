@@ -48,7 +48,7 @@ class Plan {
       }
       executors.executeSync(variables, {environ: process.env, quiet})
       if (!commands.length) {
-        console.log(process.env[varnames[-1]])
+        console.log(process.env[command.variable])
         return
       }
     }
@@ -58,7 +58,7 @@ class Plan {
     const runvars = process.env.RUNVARS
     if (runvars) {
       const dotenv = require('dotenv')
-      dotenv.load(runvars)
+      dotenv.config({path: runvars})
     }
 
     // Log prepared
