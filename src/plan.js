@@ -93,9 +93,16 @@ class Plan {
     // Log finished
     const stop = process.hrtime(start)
     if (!quiet) {
-      time = stop[0] + stop[1]/1000000000
+      const time = stop[0] + stop[1]/1000000000
       console.log(`[run] Finished in ${time} seconds`)
     }
 
   }
+}
+
+
+// System
+
+module.exports = {
+  Plan,
 }
