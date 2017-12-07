@@ -173,7 +173,7 @@ class Task {
   }
 
   get flattenGeneralTasks() {
-    const tasks = []
+    let tasks = []
     for (const task of (this.composite ? this.childs : [this])) {
       if (task.composite) {
         tasks = [...tasks, ...task.flattenGeneralTasks]

@@ -18,7 +18,7 @@ class Plan {
     // Explain
     const lines = []
     let plain = true
-    for (command of this._commands) {
+    for (const command of this._commands) {
       if (['sequence', 'parallel', 'multiplex'].includes(this._mode)) {
         if (!command.variable) {
           if (plain) lines.push(`[${this._mode.toUpperCase()}]`)
@@ -26,7 +26,7 @@ class Plan {
         }
       }
       let code = command.code
-      if (command.variable) code = '%s="%s"' % (command.variable, command.code)
+      if (command.variable) code = `${command.variable}="${command.code}"`
       lines.push(`${' '.repeat(plain ? 0 : 4)}$ ${code}`)
     }
 

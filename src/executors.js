@@ -22,7 +22,7 @@ function executeSync(commands, {environ, quiet}={}) {
     // Failed process
     if (result.status !== 0) {
         const message = `[run] Command "${command.code}" has failed`
-        helpers.print_message('general', {message})
+        helpers.printMessage('general', {message})
         process.exit(1)
     }
 
